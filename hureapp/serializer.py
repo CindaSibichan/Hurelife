@@ -43,10 +43,7 @@ class  BookAppointmentSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class AppointmentPaymentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Appointment
-        fields = ['patientname','doctorname','payment_amount','payment_date' ,'payment_status']
+
 
 
 class AppointmentPaymentSerializer(serializers.ModelSerializer):

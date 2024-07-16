@@ -10,6 +10,7 @@ from authorization.utils import *
 from rest_framework.permissions import IsAuthenticated
 from rest_framework import generics
 from rest_framework.exceptions import PermissionDenied , ValidationError
+from datetime import datetime, timedelta
 
 
 # view Patient profile
@@ -241,7 +242,7 @@ class SetOfflineChatView(generics.CreateAPIView):
 
 
 
-
+# offline chat check
 class CheckOfflineChatView(generics.RetrieveUpdateAPIView):
     permission_classes = [IsAuthenticated]
     queryset = SetOfflineChat.objects.all()
@@ -260,7 +261,78 @@ class CheckOfflineChatView(generics.RetrieveUpdateAPIView):
                 "chat_fee": instance.chat_fee
             }, status=status.HTTP_402_PAYMENT_REQUIRED)
         return super().update(request)
-    
+
+
+
+# recent appointments
+class RecentAppointments(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = BookAppointmentSerializer
+
+
+    def get_queryset(self):
+        # Calculate the date 3 days ago
+        recent_time_frame = timezone.now() - timedelta(days=3)  # Adjust timeframe as needed
+
+        # Determine the day of the week for the recent_time_frame
+        recent_day_of_week = recent_time_frame.strftime('%A')  # Returns 'Monday', 'Tuesday', etc.
+
+        # Filter appointments that fall on the recent_day_of_week
+        return Appointment.objects.filter(day_of_week=recent_day_of_week)
+
+
+# upcoming appointments
+class UpcomingAppointments(generics.ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = BookAppointmentSerializer
+
+
+    def get_queryset(self):
+        now = timezone.now()
+        
+        # Filter appointments that are scheduled after the current date and time
+        return Appointment.objects.filter(
+            day_of_week__in=self.get_upcoming_days(),time__gte=now.time()).order_by('day_of_week', 'time')
+
+    def get_upcoming_days(self):
+        # This method will return a list of upcoming days based on the current day
+        current_day = timezone.now().strftime('%A')
+        days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        
+        # Find the index of the current day
+        current_day_index = days_of_week.index(current_day)
+        
+        # Return the list of days starting from the next day to the end of the week
+        return days_of_week[current_day_index + 1:] + days_of_week[:current_day_index]
+   
+
+
+# appointment for doctors 
+class UpcomingAppointmentForDoctor(generics.ListAPIView):
+        permission_classes = [IsAuthenticated]
+        serializer_class = BookAppointmentSerializer
+        def get_queryset(self):
+            doctor_id = self.kwargs['doctor_id']
+            now = timezone.now()
+            return Appointment.objects.filter(  doctorname_id=doctor_id,
+            day_of_week__in=self.get_upcoming_days(),time__gte=now.time()).order_by('day_of_week', 'time')
+        
+        def get_upcoming_days(self):
+        # This method will return a list of upcoming days based on the current day
+            current_day = timezone.now().strftime('%A')
+            days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        
+        # Find the index of the current day
+            current_day_index = days_of_week.index(current_day)
+        
+            return days_of_week[current_day_index + 1:] + days_of_week[:current_day_index]
+   
+
+            # return Appointment.objects.filter(doctorname_id=doctor_id , day_of_week__gte=today).order_by('day_of_week', 'time')
+
+
+
+
 
 
 

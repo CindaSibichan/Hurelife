@@ -33,9 +33,14 @@ urlpatterns = [
 
 
     path('offline-pay/',SetOfflineChatView.as_view() ,name = 'offline-pay'),
+    #recent appointments
+    path('recent-appointments/',RecentAppointments.as_view() , name="recent-appointments"),
+    # upcoming appointments
+    path('upcoming-appointments/' ,UpcomingAppointments.as_view() , name="upcoming-appointments" ),
+
+    #appointments for doctors
+    path('upcomingappoint-for-doc/<int:doctor_id>/',UpcomingAppointmentForDoctor.as_view() , name = "appointment-for-doc")
+
+
     
-
-
-
-
 ]
