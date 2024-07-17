@@ -45,7 +45,7 @@ class  BookAppointmentSerializer(serializers.ModelSerializer):
 
 
 
-
+ # appointment payment serializer
 class AppointmentPaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payments
@@ -55,3 +55,23 @@ class SetOfflineChatSerializer(serializers.ModelSerializer):
     class Meta :
         model = SetOfflineChat
         fields = '__all__'
+
+
+
+
+
+# prescription serializer 
+class PrescriptionSerializer(serializers.ModelSerializer):
+    report = serializers.ImageField(required = False)
+    prescription = serializers.ImageField(required = False)
+    class Meta:
+        model = Prescription
+        fields = ['doctor_name','patient_name','notes','report','prescription','msgtype']      
+
+# doctor status serializer
+
+class DoctorStatusSerializer(serializers.ModelSerializer):
+    photo = serializers.ImageField()
+    class Meta:
+        model = DoctorStatus
+        fields =['doctor_name' , 'message' , 'photo']

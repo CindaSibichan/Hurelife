@@ -39,8 +39,22 @@ urlpatterns = [
     path('upcoming-appointments/' ,UpcomingAppointments.as_view() , name="upcoming-appointments" ),
 
     #appointments for doctors
-    path('upcomingappoint-for-doc/<int:doctor_id>/',UpcomingAppointmentForDoctor.as_view() , name = "appointment-for-doc")
+    path('upcomingappoint-for-doc/<int:doctor_id>/',UpcomingAppointmentForDoctor.as_view() , name = "appointment-for-doc"),
 
+
+     #prescription 
+    path('add-prescription/',AddPrescriptionView.as_view(), name="add-prescription" ),
+    path('list-prescription/',ListPrescriptionView.as_view() , name="list-prescription"),
+    path('delete-prescription/<id>/',DeletePrescriptionView.as_view() , name = "delete-prescription"),
+
+    # appointment payment by date
+    path('listpayment-bydate/',PaymentDetailsByDate.as_view() , name ="listpayment-bydate"),
+
+    #doctor status
+    path('doctor-status/', CreateDoctorStatusView.as_view(), name = "doctor-status"),
+    path('list-doctorstatus/',ListDoctorStatus.as_view() , name="list-doctorstatus"),
+    path('listown-doctorstatus/<int:doctor_id>/',ListOwnDoctorStatus.as_view() , name="listown-doctorstatus"),
+    path('delete-status/<int:id>/',DeleteDoctorStatus.as_view() , name="delete-status")
 
     
 ]

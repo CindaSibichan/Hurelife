@@ -11,6 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework import generics
 from rest_framework.exceptions import PermissionDenied , ValidationError
 from datetime import datetime, timedelta
+from rest_framework.parsers import MultiPartParser, FormParser
 
 
 # view Patient profile
@@ -254,8 +255,7 @@ class CheckOfflineChatView(generics.RetrieveUpdateAPIView):
 
         if current_msg_count >= int(instance.no_of_msg):
             # Logic for payment
-            # Here you can add logic to handle the payment process
-            # For simplicity, let's assume payment is processed and return a message
+          
             return Response({
                 "message": "Message limit reached. Please pay the chat fee to continue.",
                 "chat_fee": instance.chat_fee
@@ -269,16 +269,23 @@ class RecentAppointments(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = BookAppointmentSerializer
 
-
     def get_queryset(self):
         # Calculate the date 3 days ago
-        recent_time_frame = timezone.now() - timedelta(days=3)  # Adjust timeframe as needed
+        recent_time_frame = timezone.now() - timedelta(days=3)
 
-        # Determine the day of the week for the recent_time_frame
-        recent_day_of_week = recent_time_frame.strftime('%A')  # Returns 'Monday', 'Tuesday', etc.
+        # Filter appointments that were created or occurred in the last 3 days
+        return Appointment.objects.filter( date_of_appointment__gte=recent_time_frame)
 
-        # Filter appointments that fall on the recent_day_of_week
-        return Appointment.objects.filter(day_of_week=recent_day_of_week)
+
+    # def get_queryset(self):
+    #     # Calculate the date 3 days ago
+    #     recent_time_frame = timezone.now() - timedelta(days=3)  
+
+    #     # Determine the day of the week for the recent_time_frame
+    #     recent_day_of_week = recent_time_frame.strftime('%A') 
+
+    #     # Filter appointments that fall on the recent_day_of_week
+    #     return Appointment.objects.filter(day_of_week=recent_day_of_week)
 
 
 # upcoming appointments
@@ -286,24 +293,29 @@ class UpcomingAppointments(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = BookAppointmentSerializer
 
-
     def get_queryset(self):
-        now = timezone.now()
+        now = timezone.now().date()
         
-        # Filter appointments that are scheduled after the current date and time
-        return Appointment.objects.filter(
-            day_of_week__in=self.get_upcoming_days(),time__gte=now.time()).order_by('day_of_week', 'time')
+        # Filter appointments that are scheduled after the current date
+        return Appointment.objects.filter(date_of_appointment__gt=now).order_by('date_of_appointment', 'time')
 
-    def get_upcoming_days(self):
-        # This method will return a list of upcoming days based on the current day
-        current_day = timezone.now().strftime('%A')
-        days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+    # def get_queryset(self):
+    #     now = timezone.now()
         
-        # Find the index of the current day
-        current_day_index = days_of_week.index(current_day)
+    #     # Filter appointments that are scheduled after the current date and time
+    #     return Appointment.objects.filter(
+    #         day_of_week__in=self.get_upcoming_days(),time__gte=now.time()).order_by('day_of_week', 'time')
+
+    # def get_upcoming_days(self):
+    #     # This method will return a list of upcoming days based on the current day
+    #     current_day = timezone.now().strftime('%A')
+    #     days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
         
-        # Return the list of days starting from the next day to the end of the week
-        return days_of_week[current_day_index + 1:] + days_of_week[:current_day_index]
+    #     current_day_index = days_of_week.index(current_day)
+        
+    #     # Return the list of days starting from the next day to the end of the week
+    #     return days_of_week[current_day_index + 1:] + days_of_week[:current_day_index]
    
 
 
@@ -311,38 +323,146 @@ class UpcomingAppointments(generics.ListAPIView):
 class UpcomingAppointmentForDoctor(generics.ListAPIView):
         permission_classes = [IsAuthenticated]
         serializer_class = BookAppointmentSerializer
+
         def get_queryset(self):
             doctor_id = self.kwargs['doctor_id']
             now = timezone.now()
             return Appointment.objects.filter(  doctorname_id=doctor_id,
-            day_of_week__in=self.get_upcoming_days(),time__gte=now.time()).order_by('day_of_week', 'time')
+             date_of_appointment__gt=now,time__gte=now.time()).order_by('date_of_appointment', 'time')
         
-        def get_upcoming_days(self):
-        # This method will return a list of upcoming days based on the current day
-            current_day = timezone.now().strftime('%A')
-            days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+        # def get_upcoming_days(self):
+        # # This method will return a list of upcoming days based on the current day
+        #     current_day = timezone.now().strftime('%A')
+        #     days_of_week = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
         
-        # Find the index of the current day
-            current_day_index = days_of_week.index(current_day)
+        # # Find the index of the current day
+        #     current_day_index = days_of_week.index(current_day)
         
-            return days_of_week[current_day_index + 1:] + days_of_week[:current_day_index]
+        #     return days_of_week[current_day_index + 1:] + days_of_week[:current_day_index]
    
 
-            # return Appointment.objects.filter(doctorname_id=doctor_id , day_of_week__gte=today).order_by('day_of_week', 'time')
+        #     # return Appointment.objects.filter(doctorname_id=doctor_id , day_of_week__gte=today).order_by('day_of_week', 'time')
 
 
 
 
+# prescriptions Create ,list ,delete
+class AddPrescriptionView(generics.CreateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+    
+    serializer_class = PrescriptionSerializer
+    queryset = Prescription.objects.all()
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        print(f"User: {user}")
+        if not isinstance(user, Doctor) or not user.is_doctor:
+            raise PermissionDenied("You do not have permission to create prescription.")
+        serializer.save(doctor_name=user) 
+
+
+class ListPrescriptionView(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = PrescriptionSerializer
+    queryset = Prescription.objects.all()
 
 
 
 
+class DeletePrescriptionView(generics.DestroyAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = PrescriptionSerializer
+    queryset = Prescription.objects.all()
+    lookup_field = 'id'
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        print(f"User: {user}")
+        if not isinstance(user, Doctor) or not user.is_doctor:
+            raise PermissionDenied("You do not have permission to delete prescription.")
+        serializer.save(doctor_name=user) 
 
 
 
+# payment details by date 
+class PaymentDetailsByDate(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = Payments.objects.all()
+    serializer_class = AppointmentPaymentSerializer  
+
+    def get_queryset(self):
+        # Get the 'date' query parameter from URL (e.g., ?date=2024-07-17)
+        date_param = self.request.query_params.get('date', None)
+
+        if date_param:
+            try:
+                date_obj = datetime.strptime(date_param, '%Y-%m-%d').date()
+                queryset = self.queryset.filter(paid_date=date_obj)
+            except ValueError:
+                queryset = Payments.objects.none()  
+        else:
+            queryset = self.queryset
+
+        return queryset
 
 
 
+# doctor status 
+class CreateDoctorStatusView(generics.CreateAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+    queryset = DoctorStatus.objects.all()
+    serializer_class = DoctorStatusSerializer
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        print(f"User: {user}")
+        if not hasattr(user, 'is_doctor') or not user.is_doctor:
+            raise PermissionDenied("You do not have permission to create status.")
+        doctor_name = serializer.validated_data.get('doctor_name')
+        if doctor_name != user:
+            raise PermissionDenied("You do not have permission to create status for another doctor.")
+        serializer.save(doctor_name=user)
+
+
+ # list all doctor status 
+class ListDoctorStatus(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = DoctorStatus.objects.all()
+    serializer_class = DoctorStatusSerializer
+
+# list own doctor status
+
+class ListOwnDoctorStatus(generics.ListAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = DoctorStatusSerializer
+
+    def get_queryset(self):
+            doctor_id = self.kwargs['doctor_id']
+            # now = timezone.now()
+            return DoctorStatus.objects.filter(doctor_name_id=doctor_id)
+
+# delete doctor status
+
+class DeleteDoctorStatus(generics.DestroyAPIView):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class = DoctorStatusSerializer
+    queryset = DoctorStatus.objects.all()
+    lookup_field = 'id'
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        print(f"User: {user}")
+        if not isinstance(user, Doctor) or not user.is_doctor:
+            raise PermissionDenied("You do not have permission to delete status.")
+        serializer.save(doctor_name=user) 
+
+    def perform_destroy(self, instance):
+        user = self.request.user
+        if instance.doctor_name != user:
+            raise PermissionDenied("You do not have permission to delete this status.")
+        instance.delete()    
 
 
 
